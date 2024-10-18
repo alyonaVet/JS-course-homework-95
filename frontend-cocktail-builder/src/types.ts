@@ -34,3 +34,32 @@ export interface ValidationError {
 export interface GlobalError {
   error: string;
 }
+
+export interface Ingredient {
+  _id: string;
+  name: string;
+  amount: string;
+}
+
+export interface IngredientFields {
+  name: string;
+  amount: string;
+}
+
+export interface Cocktail {
+  _id: string;
+  user: string;
+  title: string;
+  image: string | null;
+  recipe: string;
+  isPublished: boolean;
+  ingredients: Ingredient[];
+}
+
+export interface CocktailFields {
+  user: string;
+  title: string;
+  image: string | null;
+  recipe: string;
+  ingredients: IngredientFields[];
+}

@@ -3,17 +3,29 @@ import mongoose from 'mongoose';
 import auth, {checkUser, RequestWithUser} from '../middleware/auth';
 import Cocktail from '../models/Cocktail';
 import {imagesUpload} from '../multer';
-import {CocktailFields, Ingredient} from '../types';
+import {CocktailFields} from '../types';
 import {parseIngredients} from '../helpers/parseIngredients';
+import permit from '../middleware/permit';
+
 
 const cocktailsRouter = express.Router();
 
 cocktailsRouter.get('/', checkUser, async (req: RequestWithUser, res, next) => {
   try {
-    const isAdmin = req.user !== undefined && req.user.role === 'admin';
-    const userFilter = isAdmin ? {} : {isPublished: true};
+    let cocktails;
 
-    const cocktails = await Cocktail.find(userFilter);
+    if (req.user && req.user.role === 'admin') {
+      cocktails = await Cocktail.find();
+    } else {
+      const publishedCocktails = await Cocktail.find({ isPublished: true });
+
+      if (req.user) {
+        const userCocktails = await Cocktail.find({ user: req.user._id, isPublished: false });
+        cocktails = publishedCocktails.concat(userCocktails);
+      } else {
+        cocktails = publishedCocktails;
+      }
+    }
 
     return res.send(cocktails);
 
@@ -51,6 +63,19 @@ cocktailsRouter.post('/', auth, imagesUpload.single('image'), async (req: Reques
   }
 });
 
+cocktailsRouter.get('/my-cocktails', checkUser, async (req: RequestWithUser, res, next) => {
+  try {
+    if (!req.user) {
+      return res.status(401).send({ error: 'User not found' });
+    }
+    const userCocktails = await Cocktail.find({ user: req.user._id });
+
+    return res.send(userCocktails);
+  } catch (error) {
+    return next(error);
+  }
+});
+
 cocktailsRouter.get('/:id', async (req, res, next) => {
   try {
     if (!mongoose.isValidObjectId(req.params.id)) {
@@ -63,6 +88,54 @@ cocktailsRouter.get('/:id', async (req, res, next) => {
     }
 
     return res.send(cocktail);
+
+  } catch (error) {
+    return next(error);
+  }
+});
+
+cocktailsRouter.patch('/:id/togglePublished', auth, permit('admin'), async (req: RequestWithUser, res, next) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).send({error: 'Cocktail ID is not valid'});
+    }
+
+    const cocktail = await Cocktail.findById(req.params.id);
+
+    if (!cocktail) {
+      return res.status(404).send({error: 'Cocktail not found'});
+    }
+
+    cocktail.isPublished = !cocktail.isPublished;
+
+    await cocktail.save();
+
+    return res.send(cocktail);
+
+  } catch (error) {
+    if (error instanceof mongoose.Error.ValidationError) {
+      return res.status(400).send(error);
+    }
+    return next(error);
+  }
+});
+
+cocktailsRouter.delete('/:id', auth, permit('admin'), async (req: RequestWithUser, res, next) => {
+  try {
+
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).send({error: 'Cocktail ID is not valid'});
+    }
+
+    const cocktail = await Cocktail.findById(req.params.id);
+
+    if (!cocktail) {
+      return res.status(404).send({error: 'Cocktail not found'});
+    }
+
+    await Cocktail.findByIdAndDelete(req.params.id);
+
+    return res.send({message: 'Cocktail was deleted successfully.'});
 
   } catch (error) {
     return next(error);

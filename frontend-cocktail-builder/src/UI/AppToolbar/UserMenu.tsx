@@ -2,7 +2,7 @@ import {Avatar, Box, Button, Menu, MenuItem} from '@mui/material';
 import {User} from '../../types';
 import React, {useState} from 'react';
 import PersonIcon from '@mui/icons-material/Person';
-import {Link, useNavigate} from 'react-router-dom';
+import {Link} from 'react-router-dom';
 import {useAppDispatch} from '../../app/hooks';
 import {logout} from '../../features/users/usersThunk';
 import {apiURL} from '../../constants';
@@ -16,7 +16,6 @@ const UserMenu: React.FC<Props> = ({user}) => {
   const dispatch = useAppDispatch();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const isOpen = Boolean(anchorEl);
-  const navigate = useNavigate();
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -29,7 +28,6 @@ const UserMenu: React.FC<Props> = ({user}) => {
   const handleLogout = async () => {
     await dispatch(logout());
     await dispatch(fetchCocktails());
-    navigate('/');
   };
 
   const avatar = user.avatar?.includes('https') ? user.avatar : `${apiURL}/${user.avatar || ''}`;
